@@ -1,6 +1,10 @@
 # Building and Running
 
 ## Requirements
+- In the terminal enter the command below this will clone the repo into your current directory : 
+``` bash
+git clone https://github.com/sebo6921/Production-automation-rocket-lab.git
+```
 - Python 3.x
 - PyQt5
 - Linux environment for building and running the provided device simulator
