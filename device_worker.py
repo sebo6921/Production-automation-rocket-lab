@@ -2,7 +2,10 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from  device_client import DeviceClient, DeviceError 
 import time
 import socket
+import logging 
 from Utils.helpers import parse_message
+logger = logging.getLogger(__name__)
+
 class DiscoveryWorker(QObject):
     discovered = pyqtSignal(str, str, str, str)  # model, serial, ip, port
     failed = pyqtSignal(str)
@@ -64,7 +67,6 @@ class MulticastScanWorker(QObject):
                 self._sock.close()
             self.finished.emit()
 
-
 class TestWorker(QObject):
     finished = pyqtSignal()
     status_update = pyqtSignal(float, float, float)  # time_ms, mv, ma
@@ -77,11 +79,14 @@ class TestWorker(QObject):
         self._rate = rate
         self._stop = False
 
-
     def run(self):
+        logger.debug(
+        "Sending START to %s:%d — duration=%ds rate=%dms",
+        self._client.ip, self._client.port, self._duration, self._rate)
         try:
             self._client.start_test(self._duration, self._rate)
         except OSError as e:
+            logger.error("Failed to send START to %s:%d: %s", self._client.ip, self._client.port, e)
             self.error.emit(str(e))
             return
         deadline = time.monotonic() + 5.0  # 5 second timeout to get confirmation
@@ -92,15 +97,19 @@ class TestWorker(QObject):
             try:
                 parsed = self._client.handle_message(text)
             except DeviceError as e:
+                logger.error("Device error on %s:%d: %s", self._client.ip, self._client.port, e)
                 self.error.emit(str(e))
                 return
 
             if parsed["type"] == "TEST":
                 if parsed.get("RESULT") == "STARTED":
+                    logger.info("Test confirmed started on %s:%d", self._client.ip, self._client.port)
                     break 
                 elif parsed.get("RESULT") == "ERROR":
                     return
         else:
+            logger.error(
+            "Timed out waiting for STARTED on %s:%d", self._client.ip, self._client.port)
             self.error.emit("Timed out waiting for test to start.")
             return
 
@@ -112,14 +121,17 @@ class TestWorker(QObject):
             try:
                 parsed = self._client.handle_message(text)
             except DeviceError as e:
+                logger.error("Device error on %s:%d: %s", self._client.ip, self._client.port, e)
                 self.error.emit(str(e))
                 return
             if parsed["type"] == "TEST":
                 if parsed.get("RESULT") == "STOPPED":
+                    logger.info("Test stopped on %s:%d", self._client.ip, self._client.port)
                     self.finished.emit()
                     return
             elif parsed["type"] == "STATUS":
                 if parsed.get("STATE") == "IDLE":
+                    logger.info("Test finished on %s:%d", self._client.ip, self._client.port)
                     self.finished.emit()
                     return
                 if self._client.times:
@@ -128,8 +140,9 @@ class TestWorker(QObject):
                         self._client.mvs[-1],
                         self._client.mas[-1],
                     )
-
+        logger.info("Test deadline reached on %s:%d", self._client.ip, self._client.port)
         self.finished.emit()
 
     def stop(self):
+        logger.debug("Stop requested for %s:%d", self._client.ip, self._client.port)
         self._stop = True

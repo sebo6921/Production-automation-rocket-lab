@@ -5,7 +5,6 @@ from Utils.qt_helper import _launch_worker
 
 logger = logging.getLogger(__name__)
 
-
 class DiscoveryManager:
     """Handles unicast and multicast device discovery."""
 
@@ -29,14 +28,14 @@ class DiscoveryManager:
         ip = self._panel.ip_edit.text().strip()
         port = self._panel.port_edit.text().strip()
         if not valid_ip(ip):
-            self._panel._warn("Please enter a valid IP address.")
+            self._panel.warn("Please enter a valid IP address.")
             return
         if not valid_port(port):
-            self._panel._warn("Please enter a valid port number (1-65535).")
+            self._panel.warn("Please enter a valid port number (1-65535).")
             return
         if self._discovery_thread is not None and self._discovery_thread.isRunning():
             return
-
+        logger.debug("Starting unicast discovery on %s:%s", ip, port)
         self._discovery_worker = DiscoveryWorker(ip, int(port))
         self._discovery_worker.discovered.connect(self._on_discovered)
         self._discovery_worker.failed.connect(self._on_failed)
@@ -52,6 +51,7 @@ class DiscoveryManager:
         self._panel.status_label.setText("Searching…")
 
     def multicast_scan(self) -> None:
+        logger.debug("Starting multicast scan")
         if self.is_scanning():
             return
 
@@ -86,6 +86,8 @@ class DiscoveryManager:
         self._registry.add(label, ip, int(port), model, serial)
         self._panel.add_device_item(label)
         self._panel.status_label.setText(f"Found: {model} / {serial}")
+        logger.info("Discovered %s at %s", label, key)
+
 
     def _on_failed(self, message: str) -> None:
         logger.error("Discovery failed: %s", message)

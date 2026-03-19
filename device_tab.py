@@ -23,7 +23,6 @@ class DevicePanel(QWidget):
         layout.addWidget(self._build_plot(), stretch=1)
         layout.addWidget(self._build_status())
 
-    #UI
     def _build_connection_group(self) -> QGroupBox:
         group = QGroupBox("Connection")
         row = QHBoxLayout()
@@ -154,5 +153,5 @@ class DevicePanel(QWidget):
         self.discover_btn.setEnabled(not self._is_discovering)
         self.multi_discovery.setEnabled(not self._is_discovering)
 
-    def _warn(self, msg: str):
+    def warn(self, msg: str):
         QMessageBox.warning(self, "Warning", msg)

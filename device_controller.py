@@ -3,9 +3,6 @@ from client_registry import ClientRegistry
 from discovery_manager import DiscoveryManager
 from test_manager import TestManager
 
-logger = logging.getLogger(__name__)
-
-
 class DeviceController:
     # Shared across all tabs: "ip:port" strings of devices currently under test.
     # All mutations occur on the Qt main thread via queued signal delivery,
@@ -20,13 +17,13 @@ class DeviceController:
 
     def on_discover(self) -> None:
         if self._is_busy():
-            self._panel._warn("A test is running. Stop it before scanning.")
+            self._panel.warn("A test is running. Stop it before scanning.")
             return
         self._discovery.discover()
 
     def on_multicast_scan(self) -> None:
         if self._is_busy():
-            self._panel._warn("A test is running. Stop it before scanning.")
+            self._panel.warn("A test is running. Stop it before scanning.")
             return
         self._discovery.multicast_scan()
 

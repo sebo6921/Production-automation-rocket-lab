@@ -16,11 +16,6 @@ MARGIN_BOT   = 45   # room for X-axis labels + legend
 
 
 class LivePlot(QWidget):
-    """
-    A pure-QPainter live plot widget.
-    Supports multiple named series, auto-scaling axes, grid, legend.
-    """
-
     def __init__(self, parent=None):
         super().__init__(parent)
         # series: label -> {"times": [...], "mv": [...], "ma": [...], "colours": (mv_col, ma_col)}
@@ -32,7 +27,6 @@ class LivePlot(QWidget):
     # ── Public API ────────────────────────────────────────────────────────────
 
     def add_series(self, label: str, mv_colour: str, ma_colour: str) -> None:
-        """Register a new device series before data arrives."""
         self._series[label] = {
             "times":   [],
             "mv":      [],
@@ -43,7 +37,6 @@ class LivePlot(QWidget):
 
     def update_series(self, label: str, times: List[float],
                       mv: List[float], ma: List[float]) -> None:
-        """Push new data for a series and trigger a repaint."""
         if label not in self._series:
             return
         self._series[label]["times"] = times
@@ -52,22 +45,17 @@ class LivePlot(QWidget):
         self.update()   # schedules a repaint on the Qt event loop
 
     def remove_series(self, label: str) -> None:
-        """Remove a single series from the plot."""
         self._series.pop(label, None)
         self.update()
 
     def mark_series_inactive(self, label: str) -> None:
-        """Mark a series as inactive (dead device) — drawn dimmed, no longer updated."""
         if label in self._series:
             self._series[label]["active"] = False
             self.update()
 
     def clear_all(self) -> None:
-        """Remove all series and clear the plot."""
         self._series.clear()
         self.update()
-
-    # ── Painting ─────────────────────────────────────────────────────────────
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -83,22 +71,17 @@ class LivePlot(QWidget):
         if plot_w < 10 or plot_h < 10:
             return
 
-        # Background
         painter.fillRect(self.rect(), BACKGROUND)
 
-        # Compute axis ranges from all series data
         all_times, all_vals = self._collect_all_data()
         t_min, t_max = self._range(all_times, 0, 1000)
         v_min, v_max = self._padded_range(all_vals)
 
-        # Grid + axes
         self._draw_grid(painter, plot_x, plot_y, plot_w, plot_h, t_min, t_max, v_min, v_max)
         self._draw_axes(painter, plot_x, plot_y, plot_w, plot_h, t_min, t_max, v_min, v_max)
 
-        # Clip drawing to plot area
         painter.setClipRect(QRect(plot_x, plot_y, plot_w, plot_h))
 
-        # Draw each series
         for label, data in self._series.items():
             times = data["times"]
             mv    = data["mv"]
@@ -116,12 +99,9 @@ class LivePlot(QWidget):
 
         painter.setClipping(False)
 
-        # Legend
         self._draw_legend(painter, plot_x + 8, plot_y + 8)
 
         painter.end()
-
-    # ── Drawing helpers ───────────────────────────────────────────────────────
 
     def _draw_line(self, painter, times, values, colour,
                    px, py, pw, ph, t_min, t_max, v_min, v_max, alpha=255):
@@ -148,12 +128,10 @@ class LivePlot(QWidget):
         pen.setStyle(Qt.DotLine)
         painter.setPen(pen)
 
-        # Vertical grid lines (time axis)
         for tick in self._ticks(t_min, t_max, 6):
             x = px + int((tick - t_min) / (t_max - t_min or 1) * pw)
             painter.drawLine(x, py, x, py + ph)
 
-        # Horizontal grid lines (value axis)
         for tick in self._ticks(v_min, v_max, 5):
             y = py + ph - int((tick - v_min) / (v_max - v_min or 1) * ph)
             painter.drawLine(px, y, px + pw, y)
@@ -167,7 +145,6 @@ class LivePlot(QWidget):
         painter.setPen(QPen(TEXT_COLOUR))
         fm = QFontMetrics(font)
 
-        # X-axis ticks + labels (time in ms)
         for tick in self._ticks(t_min, t_max, 6):
             x = px + int((tick - t_min) / (t_max - t_min or 1) * pw)
             painter.drawLine(x, py + ph, x, py + ph + 4)
@@ -175,12 +152,10 @@ class LivePlot(QWidget):
             lw = fm.horizontalAdvance(label)
             painter.drawText(x - lw // 2, py + ph + 16, label)
 
-        # X-axis title
         x_title = "Time (ms)"
         tw = fm.horizontalAdvance(x_title)
         painter.drawText(px + pw // 2 - tw // 2, py + ph + 36, x_title)
 
-        # Y-axis ticks + labels
         for tick in self._ticks(v_min, v_max, 5):
             y = py + ph - int((tick - v_min) / (v_max - v_min or 1) * ph)
             painter.drawLine(px - 4, y, px, y)
@@ -188,7 +163,6 @@ class LivePlot(QWidget):
             lw = fm.horizontalAdvance(label)
             painter.drawText(px - lw - 6, y + fm.ascent() // 2, label)
 
-        # Y-axis title (rotated)
         painter.save()
         painter.translate(12, py + ph // 2)
         painter.rotate(-90)
@@ -210,15 +184,13 @@ class LivePlot(QWidget):
         row = 0
         for label, data in self._series.items():
             mv_col, ma_col = data["colours"]
-            short = label.split("—")[0].strip()  # just "MODEL / SERIAL" part
+            short = label.split("—")[0].strip() 
 
-            # mV swatch
             painter.fillRect(x, y + row * line_h, swatch, fm.height() - 2, QColor(mv_col))
             painter.setPen(QPen(TEXT_COLOUR))
             painter.drawText(x + swatch + 4, y + row * line_h + fm.ascent(), f"{short} mV")
             row += 1
 
-            # mA swatch
             painter.fillRect(x, y + row * line_h, swatch, fm.height() - 2, QColor(ma_col))
             painter.setPen(QPen(TEXT_COLOUR))
             painter.drawText(x + swatch + 4, y + row * line_h + fm.ascent(), f"{short} mA")
@@ -243,7 +215,6 @@ class LivePlot(QWidget):
         return lo - span * padding, hi + span * padding
 
     def _ticks(self,lo, hi, count=6):
-        """Generate ~count evenly spaced round tick values between lo and hi."""
         span = hi - lo
         if span <= 0:
             return [lo]

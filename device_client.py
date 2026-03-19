@@ -7,10 +7,8 @@ from Utils.helpers import parse_message as _parse_message
 
 logger = logging.getLogger(__name__)
 
-
 class DeviceError(Exception):
     pass
-
 
 class DeviceState(Enum):
     DISCONNECTED = auto()
@@ -122,7 +120,7 @@ class DeviceClient:
             if result == "STARTED":
                 self.state = DeviceState.RUNNING
                 self.last_error = None
-                self._clear_data()
+                self.clear_data()
                 logger.info("Test started on %s:%d", self.ip, self.port)
             elif result == "STOPPED":
                 self.state = DeviceState.IDLE
@@ -153,7 +151,7 @@ class DeviceClient:
 
         return parsed
 
-    def _clear_data(self) -> None:
+    def clear_data(self) -> None:
         self.times.clear()
         self.mvs.clear()
         self.mas.clear()

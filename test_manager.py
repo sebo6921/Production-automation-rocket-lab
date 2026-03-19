@@ -21,22 +21,22 @@ class TestManager:
     def start(self) -> None:
         checked = self._panel.get_checked_labels()
         if not checked:
-            self._panel._warn("Please check at least one device.")
+            self._panel.warn("Please check at least one device.")
             return
         if any(label in self._running for label in checked):
-            self._panel._warn("A test is already running. Stop it first.")
+            self._panel.warn("A test is already running. Stop it first.")
             return
         if any(self._registry.key_for(l) in self._global_running for l in checked):
-            self._panel._warn("One or more devices are already being tested in another tab.\nStop that test first.")
+            self._panel.warn("One or more devices are already being tested in another tab.\nStop that test first.")
             return
 
         duration = self._panel.duration_spin.value()
         rate = self._panel.rate_spin.value()
         if not (1 <= duration <= 10000):
-            self._panel._warn("Duration must be between 1 and 10000.")
+            self._panel.warn("Duration must be between 1 and 10000.")
             return
         if not (1 <= rate <= 3600):
-            self._panel._warn("Rate must be between 1 and 3600.")
+            self._panel.warn("Rate must be between 1 and 3600.")
             return
 
         self._panel.plot_widget.clear_all()
@@ -44,7 +44,7 @@ class TestManager:
 
         for label in checked:
             client = self._registry.get_or_create(label)
-            client._clear_data()
+            client.clear_data()
 
             self._global_running.append(f"{client.ip}:{client.port}")
 
